@@ -1,0 +1,70 @@
+{
+  "theme": "dark",
+  "archetype": "Archetype 2 (Performance Pro) / Archetype 4 (Swiss & High-Contrast) Hybrid",
+  "colors": {
+    "background": "#09090B",
+    "surface": "#18181B",
+    "surface_hover": "#27272A",
+    "primary_accent": "#FFC83D",
+    "primary_accent_hover": "#E5B437",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "#A1A1AA",
+    "success": "#22C55E",
+    "error": "#EF4444",
+    "border": "rgba(255,255,255,0.08)"
+  },
+  "typography": {
+    "headings": "Outfit, sans-serif",
+    "body": "Manrope, sans-serif",
+    "rules": [
+      "Do NOT use Inter for headings.",
+      "Use tight tracking (tracking-tight) for large headings.",
+      "Maintain high contrast text at all times."
+    ]
+  },
+  "layout": {
+    "strategy": "The 'Control Room' Grid",
+    "sidebar": "Left sidebar navigation. Dark background with subtle active states (Amber text or left border indicator). Links must be fully visible on desktop.",
+    "header": "Sticky top header with glassmorphism (backdrop-blur-xl bg-black/60) or solid dark background. Contains search bar, notification bell with badge counter, and user avatar.",
+    "cards": "Rounded cards (max 8px radius) with 1px subtle inner border (border-white/10). No heavy soft shadows, rely on minimalistic borders and slight color differentiation for depth.",
+    "spacing": "Dense but readable, p-4 to p-6 inside cards. Ensure containers have proper padding to prevent text collision."
+  },
+  "components": {
+    "buttons": "Primary buttons: bg-[#FFC83D] text-black font-semibold. Secondary buttons: bg-zinc-800 text-white hover:bg-zinc-700.",
+    "badges": "Status badges: Online (Green), Offline (Red). Small text, uppercase, tracking-wider.",
+    "inputs": "Shadcn standard but customized for dark theme: bg-zinc-900 border-zinc-800 focus:ring-[#FFC83D] focus:border-[#FFC83D].",
+    "notifications": "Slide-in dropdown panel from the right using Framer Motion. Use Sonner for toast notifications with sound alerts.",
+    "tables": "Shadcn table component. Clean rows, border-b border-zinc-800. Dense data display for Orders and Transactions.",
+    "tabs": "Customized Shadcn tabs, override h-9 with h-auto, active state gets Amber text/underline or background.",
+    "forms": "Use Shadcn Form, Input, Select, Textarea components. Always left-align labels."
+  },
+  "motion": {
+    "hover": "Slight lift (-translate-y-1) for listing cards, smooth color transitions for interactive elements.",
+    "page_transitions": "Subtle fade-in and slide-up for content entry.",
+    "interactions": "Smooth dropdowns, sliding notification panel, and clear socket-based chat message entry animations."
+  },
+  "media": {
+    "avatars": [
+      "https://images.pexels.com/photos/7915359/pexels-photo-7915359.jpeg",
+      "https://images.pexels.com/photos/7849511/pexels-photo-7849511.jpeg"
+    ],
+    "listing_items": [
+      "https://images.unsplash.com/photo-1693929291343-f38cb7519d5d",
+      "https://images.unsplash.com/photo-1549614614-b8f90c10b52e",
+      "https://images.unsplash.com/photo-1764768306669-d0ab6d67b00b"
+    ]
+  },
+  "icons": {
+    "library": "lucide-react"
+  },
+  "instructions_to_main_agent": [
+    "Create the app exclusively using .js (and .jsx) files, avoiding TypeScript (.ts/.tsx) setups.",
+    "Ensure the app is strictly an internal operational dashboard with Admin and Seller roles (Not a public marketplace).",
+    "Follow the exact dark theme and #FFC83D accent color matching the Eldorado gaming reference.",
+    "Implement real-time features like Socket.IO chat in order checkout flows and Toast alerts with sound triggers.",
+    "Use grid layouts for the Listings/Offers page and dense, clear tables for Orders/Disputes/Transactions.",
+    "Ensure all interactive and informational elements have 'data-testid' attributes (e.g., data-testid='submit-listing-btn', data-testid='notification-bell').",
+    "All navigation links must be visible in the left sidebar, no hamburger menus on desktop view.",
+    "Customize Shadcn UI components heavily to fit the dark gaming aesthetic instead of leaving them with default styling."
+  ]
+}

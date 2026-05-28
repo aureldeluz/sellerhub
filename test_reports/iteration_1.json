@@ -1,0 +1,46 @@
+{
+  "summary": "End-to-end backend tests for Seller Hub API. 39/39 tests passed covering auth (register/login/me/refresh/forgot+reset), seller availability + activity logs, listings CRUD + image upload (validation, max 3, soft delete), orders (admin-only checkout, completion, cancellation, balance flow), chat messages, wallet withdrawals (approve/reject with refund), disputes, notifications + preferences, admin stats/sellers/rating/notes/activity-logs, and RBAC enforcement (seller blocked from /admin/*).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/wallet/withdraw", "issue": "Problem statement requires min $10 withdrawal but the Pydantic schema only enforces amount > 0; no $10 floor validation. Currently a seller can withdraw $0.01."},
+      {"endpoint": "POST /api/orders/checkout", "issue": "Sets listing.status='sold' but does not decrement listing.stock; on cancel it re-sets to 'active' regardless of stock state. Quantity-based stock tracking is inconsistent."},
+      {"endpoint": "PATCH /api/listings/{id}", "issue": "When admin (not seller) edits a listing, no seller_activity_log is generated; activity logs are tied to user role rather than listing ownership. Title/price changes by admin are silently invisible to the seller log."},
+      {"endpoint": "GET /api/files/{path}", "issue": "Token-via-query-string (?auth=...) exposes JWT in URLs/server logs; acceptable for MVP but should switch to signed URLs."},
+      {"endpoint": "POST /api/auth/forgot-password", "issue": "Returns reset_token directly in response (intentional MVP placeholder per spec). Must be replaced with email delivery before production."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_seller_hub_api.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Add min-$10 validation to WithdrawIn (Field(ge=10))",
+    "Decide stock model: quantity decrement on checkout vs single-unit listings; align cancel/checkout listing status logic",
+    "Decide whether admin edits to listings should also generate seller_activity_log entries (likely yes for audit trail)",
+    "Plan migration of /api/files token-auth from query-string to signed URLs before prod"
+  ],
+  "critical_code_review_comments": [
+    "server.py is 1260 lines; should be split into routers (auth, listings, orders, wallet, disputes, admin, ws) for maintainability.",
+    "Many endpoint handlers re-implement seller-scope filtering (filt['seller_id']=user['id']) - extract a helper.",
+    "log_seller_activity broadcasts to all admins inside a tight loop without batching; fine for MVP but consider pub/sub topic.",
+    "init_storage is sync but called from async startup; if it does heavy I/O it can block event loop.",
+    "No rate limiting on /auth/login or /auth/forgot-password - brute force risk.",
+    "JWT_SECRET committed in .env with hardcoded value; document rotation procedure for prod.",
+    "WithdrawIn lacks min amount (spec requires $10 minimum).",
+    "Order listing.stock is never decremented on checkout; only status flipped to 'sold'.",
+    "complete_order and cancel_order rely on positive pending_balance but don't guard against double-cancel/double-complete via concurrent calls (no transactions).",
+    "delete_listing soft-archives but does not also archive in-flight orders - acceptable but no guard.",
+    "@app.on_event('startup'/'shutdown') is deprecated in modern FastAPI - migrate to lifespan."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_seller_hub_api.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "N/A"},
+  "test_credentials": "admin@sellerhub.io / Admin@12345 (seeded). Sellers registered dynamically with TEST_ prefix.",
+  "seed_data_creation": "Test created: 1 seller user (test_seller_<uuid>@test.io), 4 listings (1 deleted, 1 sold+completed, 1 cancelled, 1 disputed), 2 withdrawal requests (1 approved, 1 rejected), 1 dispute. Notifications generated organically. All prefixed TEST_ for cleanup.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend fully validated against external REACT_APP_BACKEND_URL. Test file /app/backend/tests/test_seller_hub_api.py uses module-level state dict; run as full suite (tests are ordered and share state). Email is auto-lowercased by API - use lowercase emails in registration tests. WebSocket /api/ws not asserted via pytest (only HTTP); add aiohttp-ws test if needed. EMERGENT object storage init succeeded - real PUT/GET path exercised via image upload tests."
+}

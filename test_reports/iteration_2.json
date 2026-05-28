@@ -1,0 +1,43 @@
+{
+  "summary": "P1/P2 enhancements fully validated. 28/28 new tests + 39/39 regression tests pass (67/67 total). Covers slowapi rate limiting on /auth/{login,register,forgot-password,reset-password} verified against localhost (real 429s after threshold), 2FA TOTP full lifecycle (setup -> enable with password+code, login block (2fa_required), login w/ invalid code (2fa_invalid), login w/ valid code, /auth/me totp_enabled flag, disable with code, wrong-password/wrong-code/no-setup rejections), X-Total-Count + Access-Control-Expose-Headers on /listings /orders /wallet/withdrawals /notifications /admin/sellers /admin/activity-logs, /admin/analytics (days=7 -> 8 entries, days=14 -> 15 entries, days=30 -> 31 entries, status_breakdown + top_categories + active_sellers_count, seller forbidden), lifespan-based startup with no on_event deprecation warnings in backend logs, admin seeded, storage initialized.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/admin/sellers", "issue": "X-Total-Count reflects pre-availability count (computed before the post-filter for `availability`). With availability filter set, total can exceed returned count even when no further pages exist. Acceptable for MVP but UI consumers may show wrong totals when filtering by availability."},
+      {"endpoint": "POST /api/auth/2fa/setup", "issue": "No password re-confirmation before generating a pending_secret. Anyone with a valid access token (e.g., stolen) can reset the pending secret. Enable still requires password, so impact is limited, but adding password re-auth on /setup hardens defense-in-depth."},
+      {"endpoint": "POST /api/auth/2fa/disable", "issue": "If totp is already disabled the endpoint returns 200 silently regardless of supplied password. Could allow a probe to confirm 2FA-disabled state without auth checks beyond bearer token. Low risk."},
+      {"endpoint": "POST /api/auth/login", "issue": "totp_code is verified via TOTP.verify(valid_window=1) which allows current and adjacent windows; cool but does NOT prevent replay of the same code within the same 30s window. Consider one-time use tracking for stronger guarantees."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_p1_p2_features.py",
+    "/app/backend/tests/test_seller_hub_api.py",
+    "/app/test_reports/pytest/p1_p2_results.xml",
+    "/app/test_reports/pytest/regression_results.xml"
+  ],
+  "action_items": [
+    "Optional: re-prompt password in /auth/2fa/setup so a stolen access token cannot rotate the pending TOTP secret without confirming password.",
+    "Optional: track used TOTP codes within current 30s window to prevent code replay.",
+    "Optional: make /admin/sellers X-Total-Count reflect the actual filtered count (move availability filter into the mongo query rather than post-filter loop).",
+    "Document slowapi tuning (10/min login, 5/min register, 3/min forgot, 5/min reset) in README and consider per-user (not only per-IP) keys behind shared CDN."
+  ],
+  "critical_code_review_comments": [
+    "server.py is now ~1440 lines; should be split into routers (auth, 2fa, listings, orders, wallet, disputes, admin, ws) for maintainability.",
+    "Rate limit key_func uses get_remote_address which under a CDN/proxy will see the proxy IP; consider Forwarded/X-Forwarded-For aware key with caution.",
+    "/admin/analytics performs an in-Python loop over completed orders to compute top categories; for large datasets a $lookup aggregation would be more efficient.",
+    "/admin/sellers iterates users and post-filters by availability AFTER total count is calculated -> total can mismatch page contents when availability filter is active.",
+    "2FA pending_secret is stored in plaintext on the user doc - acceptable for MVP, but encrypting at rest (or using separate collection w/ TTL) would be more secure.",
+    "InsecureKeyLengthWarning still emitted by PyJWT - JWT_SECRET in backend/.env is shorter than the recommended 32 bytes. Rotate to >=32 chars for prod.",
+    "lifespan migration done correctly; no on_event deprecation warnings in startup logs."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_p1_p2_features.py"
+  ],
+  "success_rate": {"backend": "100% (67/67)", "frontend": "N/A (backend-only request)"},
+  "test_credentials": "admin@sellerhub.io / Admin@12345 (seeded). Test sellers registered dynamically with TEST_p2_<hex>@test.io / Seller@12345.",
+  "seed_data_creation": "Created 2 dynamic seller users (TEST_p2_*) used for 2FA + RBAC tests. One had 2FA enabled then disabled in teardown. Also created several throwaway TEST_rl_* users via rate-limit test (first 5 succeed, rest 429). No persistent listings/orders/withdrawals created by this iteration.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Rate-limit tests sleep ~62s between classes to reset the slowapi window and hit localhost:8001 directly (Cloudflare rotates client IPs on the public URL). 2FA tests use pyotp.TOTP(secret).now(); always run the disable test or the seller user will be permanently 2FA-blocked. The fixture in Test2FA has teardown that disables 2FA on failure too. Pagination tests assert both X-Total-Count and Access-Control-Expose-Headers: X-Total-Count - frontend must read header through this CORS exposure. Backend lifespan is implemented via @asynccontextmanager and no FastAPI on_event deprecation warnings are emitted. PyJWT still warns InsecureKeyLengthWarning - cosmetic but worth raising JWT_SECRET to >=32 chars."
+}

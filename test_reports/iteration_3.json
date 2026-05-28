@@ -1,0 +1,37 @@
+{
+  "summary": "Comprehensive backend test of all new SellerHub features (withdrawals 3-methods, ref_no, validation, admin payout view, approve/reject, wallet txn filter, stock decrement bug, feedback CRUD, archived hard-delete, admin wallet adjust). 19/19 backend tests PASSED. Frontend forgot-password page verified visually. Frontend integration testing BLOCKED: REACT_APP_BACKEND_URL in /app/frontend/.env points to https://seller-hub-228.preview.emergentagent.com which returns 404 for all /api/* routes. The actual working backend is at https://withdrawal-system-v2.preview.emergentagent.com (matches review_request). As a result, login fails on the served frontend, so /withdrawals, /sellers, /listings, /wallet/withdraw, /feedback pages could not be exercised end-to-end.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "ALL authenticated flows", "issue": "Frontend is built against REACT_APP_BACKEND_URL=https://seller-hub-228.preview.emergentagent.com but that host returns 404 for /api/*. Confirmed by network log: POST seller-hub-228/api/auth/login -> 404. Working backend is on https://withdrawal-system-v2.preview.emergentagent.com. Login toast 'Login failed' shown.", "affected_selectors": ["all"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_new_features.py",
+    "/app/test_reports/pytest/new_features.xml"
+  ],
+  "action_items": [
+    "URGENT: Fix /app/frontend/.env REACT_APP_BACKEND_URL to https://withdrawal-system-v2.preview.emergentagent.com (or whatever the correct ingress is) and restart frontend. Without this, no authenticated UI flow works.",
+    "After URL fix, re-run frontend smoke test of /withdrawals (Ref column + modal), /sellers (open-feedback modal), /listings archived (hard-del button), /wallet/withdraw (rate-monday + rate-other + 3 method tabs), /feedback (stat cards).",
+    "Backend logic is fully verified for all new features – no backend action items."
+  ],
+  "critical_code_review_comments": [
+    "WithdrawIn validation, ref_no generation (WD- + 8 hex), wallet hold/refund, transactions filter, listing hard-delete on archived, feedback CRUD, admin wallet adjust – all working as designed and persistence verified via GET.",
+    "Frontend bundle was probably built before .env was finalized; ensure CI/deploy uses the latest env."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_new_features.py"
+  ],
+  "success_rate": {"backend": "100% (19/19)", "frontend": "Blocked - cannot login due to wrong REACT_APP_BACKEND_URL"},
+  "test_credentials": "Admin: admin@sellerhub.io / Admin@12345 (seeded). Sellers registered dynamically per test run.",
+  "seed_data_creation": "Tests register fresh seller per module run (seller_<uuid>@sellerhub.io) and create listings/feedback/withdrawals scoped to that seller, then verify via GET. No prod data touched.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend at https://withdrawal-system-v2.preview.emergentagent.com works for all new endpoints; tests live at /app/backend/tests/test_new_features.py and can be re-run with TEST_BACKEND_URL env override. Frontend cannot be tested until /app/frontend/.env REACT_APP_BACKEND_URL points to the working backend. After fix, focus E2E on: (1) admin login -> /withdrawals shows ref_no + eye opens [data-testid=withdrawal-modal]; (2) /sellers shows [data-testid=open-feedback-<sid>] and modal submit; (3) /listings archived tab shows [data-testid=hard-del-<id>]; (4) /wallet/withdraw shows [data-testid=rate-monday] [data-testid=rate-other] + 3 method tabs toggling field set; (5) seller /feedback shows stat-completed/positive/negative/score cards.",
+  "rca of the issue": "RCA: /app/frontend/.env has REACT_APP_BACKEND_URL=https://seller-hub-228.preview.emergentagent.com. That hostname only serves the static frontend; its ingress does NOT forward /api/* to backend (returns 'page not found'). Backend ingress is on a different host (withdrawal-system-v2). Browser network trace shows: POST https://seller-hub-228.preview.emergentagent.com/api/auth/login -> HTTP 404. Mitigation: update REACT_APP_BACKEND_URL to the correct ingress and restart frontend (supervisor reload). Repro: open /login, submit any credentials, observe 'Login failed' toast and 404 in console."
+}
